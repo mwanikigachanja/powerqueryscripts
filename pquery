@@ -1,0 +1,32 @@
+Objectives:
+1. download a json file to be used to create other PQ  input URL variables.
+2. download individual json files based upon,
+    input name + api key + current date
+3. combine all json files into one table in Excel
+4. save the table to external sheet for backup
+
+
+let
+    // Step 1: Download the JSON file to create input variables
+    source = Json.Document(Web.Contents("https://example.com/initial_file.json")),
+    name = source[name],
+    apiKey = source[apiKey],
+    currentDate = DateTime.ToText(DateTime.LocalNow(), "yyyy-MM-dd"),
+
+    // Step 2: Download individual JSON files based on input variables
+    individualJsonFiles = Json.Document(Web.Contents("https://example.com/api?name=" & name & "&apiKey=" & apiKey & "&date=" & currentDate)),
+    // You may need to modify the URL and query parameters to match your API endpoint
+
+    // Step 3: Combine all JSON files into one table
+    combinedTable = Table.FromList(individualJsonFiles, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    expandedRecords = Table.ExpandRecordColumn(combinedTable, "Column1", {"Field1", "Field2", "Field3"}, {"Field1", "Field2", "Field3"}),
+
+    // Step 4: Save the table to an external sheet for backup
+    backupWorkbookPath = "C:\Path\to\backup\file.xlsx",
+    backupWorksheetName = "Backup",
+    backupTable = Table.Buffer(expandedRecords),
+    backupWorkbook = Excel.Workbook(File.Contents(backupWorkbookPath)),
+    backupWorksheet = backupWorkbook{[Item=backupWorksheetName,Kind="Sheet"]}[Data],
+    combinedTableWithBackup = Table.Combine({expandedRecords, backupWorksheet})
+in
+    combinedTableWithBackup
